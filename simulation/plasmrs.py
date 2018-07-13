@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 
-# Plasmid Mutation Simulator
+# plasmrs - a plasmid mutation rate and segregation simulator
+
+# Contributors:
+#   Jeffrey Barrick
+#   Stratton Georgoulis
 
 import random
 import time
@@ -11,7 +15,10 @@ import os.path
 #   Keys are tuples as number of (FP, MP) in that category of cell
 #   Values are lists with (Fitness, Selection Probability, Cell Number)
 
-parser = argparse.ArgumentParser(description='Simulate plasmid mutations')
+parser = argparse.ArgumentParser(
+  description='Simulate mutations in plasmids within a cell population',
+  formatter_class=argparse.ArgumentDefaultsHelpFormatter
+  )
 
 parser.add_argument('--initial-cells', '-i', dest='initialPopulationSize', type=int,
                    default=1, help='initial number of cells')
@@ -19,14 +26,16 @@ parser.add_argument('--initial-cells', '-i', dest='initialPopulationSize', type=
 parser.add_argument('--final-cells', '-f', dest='finalPopulationSize', type=int,
                    default=10000, help='final number of cells')
 
-parser.add_argument('--plasmid-copy-number', '-p', dest='plasmidsPerCell', type=float,
+parser.add_argument('--plasmid-copy-number', '-p', dest='plasmidsPerCell', type=int,
                    default=100, help='mean number of plasmids per cell')
 
 parser.add_argument('--plasmid-mu', '-u', dest='plasmidMutationRate', type=float,
                    default=1E-6, help='mutation rate per plasmid replication')
 
 parser.add_argument('--plasmid-segregation-model', '-m', dest='plasmidReplicationSegregationModel', type=float,
-                   default=1, help='segregation model for plasmids (1=replicate plasmids and eqully divide into daughter cells)')
+                   default=1, help='segregation model for plasmids\n' + 
+                   '  1=replicate plasmids then equally divide into daughter cells\n' +
+                   '  2=replicate plasmids then randomly divide into daughter cells)')
 
 parser.add_argument('--replicates', '-r', dest='replicates', type=int,
                    default=100, help='replicates')
@@ -35,10 +44,10 @@ parser.add_argument('--random-seed', '-s', dest='seednum', type=int,
                    default=-1, help='random number seed (Default = set based on time)')
 
 parser.add_argument('--mutant-count-output', '-mo', dest='mutant_count_file_name', type=str,
-                   default="mutant_counts.csv", help='Output file')
+                   default="mutant_counts.csv", help='mutation count output file')
                    
 parser.add_argument('--population-output', '-po', dest='population_file_name', type=str,
-                   default="population.csv", help='Output file')
+                   default="population.csv", help='population output file')
 
 args = parser.parse_args()
 
@@ -168,20 +177,20 @@ def main():
      ((t & 0x0000ff00) <<  8) +
      ((t & 0x000000ff) << 24)   )
     random.seed(seed)
-    print("Random seed based on time: " + int(seed))
+    print("Random seed based on time: " + str(seed))
   else:
     random.seed(args.seednum)
-    print("Used defined random seed: " + int(args.seednum))
+    print("Used defined random seed: " + str(args.seednum))
 
   
   #Open in append mode
   mutant_count_file_exists = os.path.isfile(args.mutant_count_file_name) 
-  mutant_count_file = open(args.mutant_count_file_name, "w+")
+  mutant_count_file = open(args.mutant_count_file_name, "a")
   if not mutant_count_file_exists:
     mutant_count_file.write("N_0,N,N_p,u_p,repl,m\n")
   
   population_file_exists = os.path.isfile(args.population_file_name) 
-  population_file = open(args.population_file_name, "w+")
+  population_file = open(args.population_file_name, "a")
   if  not population_file_exists:
     population_file.write("N_0,N,N_p,u_p,repl,p_wt,p_mut,cells\n")
 
@@ -200,6 +209,8 @@ def main():
 
     while(populationSize < args.finalPopulationSize):
       populationSize = populationSize + 1
+      #if populationSize % 1000000 == 0:
+      #  print("  " + str(populationSize) + " cells")
       states = assignCellSelectionProb(states)
       cellToDiv = pickCellToDivide(states)
       divide(cellToDiv, states)
